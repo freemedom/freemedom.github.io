@@ -1,0 +1,247 @@
+<!-- 实现一个html网页代码，有一个输入框，和一个按钮。点击按钮，将输入框中的文
+本进行如下处理。
+输入框中的文本是一段html，去除其中的span.MathJax_Preview标签和内部内容，
+sapn.MJXc-processed标签和内部内容。然后选择script type="math/tex"这样的标
+签，比如
+<script id="MathJax-Element-342" type="math/tex">Seq\_len</script>
+<script id="MathJax-Element-343" type="math/tex">X_{dec}</script>)
+将script标签两侧替换成\(和\)
+
+然后将处理后的文本输出到下侧的一块地方。然后也将内容写入剪切板。
+-->
+
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Anki MathJax 修复工具</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+            padding: 30px;
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 20px;
+            text-align: center;
+            font-size: 28px;
+        }
+
+        .input-section {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: #555;
+            font-weight: 600;
+        }
+
+        textarea {
+            width: 100%;
+            min-height: 200px;
+            padding: 12px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 14px;
+            font-family: 'Courier New', monospace;
+            resize: vertical;
+            transition: border-color 0.3s;
+        }
+
+        textarea:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            font-size: 16px;
+            font-weight: 600;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+            display: block;
+            margin: 0 auto 20px;
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        button:active {
+            transform: translateY(0);
+        }
+
+        .output-section {
+            margin-top: 20px;
+        }
+
+        .output-area {
+            width: 100%;
+            min-height: 200px;
+            padding: 12px;
+            border: 2px solid #4caf50;
+            border-radius: 8px;
+            background: #f9f9f9;
+            font-size: 14px;
+            font-family: 'Courier New', monospace;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            overflow-y: auto;
+            max-height: 400px;
+        }
+
+        .success-message {
+            color: #4caf50;
+            text-align: center;
+            margin-top: 10px;
+            font-weight: 600;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+
+        .success-message.show {
+            opacity: 1;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Anki MathJax 修复工具</h1>
+        
+        <div class="input-section">
+            <label for="inputText">输入 HTML 内容：</label>
+            <textarea id="inputText" placeholder="请粘贴需要处理的 HTML 内容..."></textarea>
+        </div>
+
+        <button id="processBtn">处理并复制到剪切板</button>
+
+        <div class="output-section">
+            <label for="outputArea">处理后的内容：</label>
+            <div id="outputArea" class="output-area"></div>
+            <div id="successMessage" class="success-message">✓ 已复制到剪切板！</div>
+        </div>
+    </div>
+
+    <script>
+        document.getElementById('processBtn').addEventListener('click', function() {
+            const inputText = document.getElementById('inputText').value;
+            const outputArea = document.getElementById('outputArea');
+            const successMessage = document.getElementById('successMessage');
+
+            if (!inputText.trim()) {
+                alert('请输入要处理的 HTML 内容！');
+                return;
+            }
+
+            try {
+                // 处理 HTML 内容
+                let processedText = processHTML(inputText);
+
+                // 显示处理后的内容
+                outputArea.textContent = processedText;
+
+                // 复制到剪切板
+                copyToClipboard(processedText);
+
+                // 显示成功消息
+                successMessage.classList.add('show');
+                setTimeout(() => {
+                    successMessage.classList.remove('show');
+                }, 2000);
+            } catch (error) {
+                alert('处理过程中出现错误：' + error.message);
+                console.error(error);
+            }
+        });
+
+        function processHTML(html) {
+            // 创建一个临时 DOM 元素来解析 HTML
+            const tempDiv = document.createElement('div');
+            tempDiv.innerHTML = html;
+
+            // 1. 移除 span.MathJax_Preview 标签和内容
+            const mathJaxPreview = tempDiv.querySelectorAll('span.MathJax_Preview');
+            mathJaxPreview.forEach(span => span.remove());
+
+            // // 2. 移除 span.MJXc-processed 标签和内容
+            // const mjxcProcessed = tempDiv.querySelectorAll('span.MJXc-processed'); // MathJax_CHTML
+            // mjxcProcessed.forEach(span => span.remove());
+            const mathJaxCHTML = tempDiv.querySelectorAll('span.MathJax_CHTML');
+            mathJaxCHTML.forEach(span => span.remove());
+
+            // 3. 处理 script type="math/tex" 标签
+            const mathScripts = tempDiv.querySelectorAll('script[type="math/tex"]');
+            mathScripts.forEach(script => {
+                const content = script.textContent || script.innerText;
+                // 创建文本节点替换 script 标签
+                const textNode = document.createTextNode('\\(' + content + '\\)');
+                script.parentNode.replaceChild(textNode, script);
+            });
+
+            // 返回处理后的 HTML
+            return tempDiv.innerHTML;
+        }
+
+        function copyToClipboard(text) {
+            // 使用现代 Clipboard API
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(text).catch(err => {
+                    console.error('复制失败：', err);
+                    // 降级到传统方法
+                    fallbackCopyToClipboard(text);
+                });
+            } else {
+                // 降级到传统方法
+                fallbackCopyToClipboard(text);
+            }
+        }
+
+        function fallbackCopyToClipboard(text) {
+            const textArea = document.createElement('textarea');
+            textArea.value = text;
+            textArea.style.position = 'fixed';
+            textArea.style.left = '-999999px';
+            textArea.style.top = '-999999px';
+            document.body.appendChild(textArea);
+            textArea.focus();
+            textArea.select();
+            
+            try {
+                document.execCommand('copy');
+            } catch (err) {
+                console.error('复制失败：', err);
+                alert('复制到剪切板失败，请手动复制输出区域的内容。');
+            }
+            
+            document.body.removeChild(textArea);
+        }
+    </script>
+</body>
+</html>
+
