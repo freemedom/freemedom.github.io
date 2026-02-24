@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <title>cnblogs 图片尺寸批量替换</title>
+  <style>
+    body {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      margin: 16px;
+      background: #f5f5f5;
+    }
+    h1 {
+      font-size: 20px;
+      margin-bottom: 12px;
+    }
+    .desc {
+      font-size: 13px;
+      color: #555;
+      margin-bottom: 10px;
+    }
+    textarea {
+      width: 100%;
+      min-height: 300px;
+      box-sizing: border-box;
+      padding: 8px;
+      border-radius: 4px;
+      border: 1px solid #ccc;
+      font-family: Consolas, "Courier New", monospace;
+      font-size: 13px;
+      resize: vertical;
+      background: #fff;
+    }
+    .btn-row {
+      margin: 10px 0;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    button {
+      padding: 6px 14px;
+      border-radius: 4px;
+      border: none;
+      cursor: pointer;
+      background-color: #3b82f6;
+      color: #fff;
+      font-size: 13px;
+    }
+    button:hover {
+      background-color: #2563eb;
+    }
+    .status {
+      font-size: 12px;
+      color: #16a34a;
+    }
+    .section-title {
+      font-size: 14px;
+      margin: 12px 0 6px;
+    }
+  </style>
+</head>
+<body>
+  <h1>cnblogs 图片尺寸批量替换</h1>
+  <div class="desc">
+    上面粘贴整段 html（包含 <code>alt="image" /></p></code> 的图片标签），点击按钮后：<br>
+    1）把其中所有 <code>alt="image" /></p></code> 替换成 <code>alt="image" height="642" width="1027" /></p></code>；<br>
+    2）在下方显示结果，并自动复制结果到剪贴板。
+  </div>
+
+  <div class="section-title">输入 html：</div>
+  <textarea id="inputArea" placeholder="在这里粘贴需要处理的 html..."></textarea>
+
+  <div class="btn-row">
+    <button id="processBtn">处理并复制</button>
+    <span class="status" id="statusText"></span>
+  </div>
+
+  <div class="section-title">处理后的结果：</div>
+  <textarea id="outputArea" readonly></textarea>
+
+  <script>
+    (function () {
+      var input = document.getElementById('inputArea');
+      var output = document.getElementById('outputArea');
+      var btn = document.getElementById('processBtn');
+      var status = document.getElementById('statusText');
+
+      // 给一个示例，方便直接测试
+      input.value =
+        '<p>&nbsp;</p>\\n';
+
+      function processHtml() {
+        var text = input.value || '';
+        if (!text.trim()) {
+          status.textContent = '请输入要处理的 html 文本。';
+          output.value = '';
+          return;
+        }
+
+        // 只替换 alt="image" 后面直接跟 /></p> 的情况
+        var replaced = text.replace(/alt="image"\s*\/><\/p>/g, 'alt="image" height="642" width="1027" /></p>');
+        output.value = replaced;
+
+        // 尝试复制到剪贴板
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(replaced).then(function () {
+            status.textContent = '处理完成，结果已复制到剪贴板。';
+          }).catch(function () {
+            status.textContent = '处理完成，但自动复制失败，请手动复制下面的内容。';
+          });
+        } else {
+          // 兼容：选中文本域内容，让用户自己 Ctrl+C
+          output.focus();
+          output.select();
+          status.textContent = '处理完成，请手动复制下面的内容（Ctrl+C）。';
+        }
+      }
+
+      btn.addEventListener('click', processHtml);
+    })();
+  </script>
+</body>
+</html>
