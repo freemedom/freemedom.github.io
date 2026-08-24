@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
   <meta charset="UTF-8" />
-  <title>cnblogs 图片尺寸批量替换</title>
+  <title>cnblogs / GitHub MD 图片尺寸批量替换</title>
   <style>
     body {
       font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
@@ -59,15 +59,15 @@
   </style>
 </head>
 <body>
-  <h1>cnblogs 图片尺寸批量替换</h1>
+  <h1>cnblogs / GitHub MD 图片尺寸批量替换</h1>
   <div class="desc">
-    上面粘贴整段 html（包含 <code>alt="image" /></p></code> 的图片标签），点击按钮后：<br>
-    1）把其中所有 <code>alt="image" /></p></code> 替换成 <code>alt="image" height="642" width="1027" /></p></code>；<br>
-    2）在下方显示结果，并自动复制结果到剪贴板。
+    粘贴 cnblogs HTML 或 GitHub MD，点击按钮后按内容自动处理，结果会显示在下方并尽量复制到剪贴板。<br>
+    <b>cnblogs：</b>把所有 <code>alt="image" /></p></code> 替换成 <code>alt="image" height="642" width="1027" /></p></code>。<br>
+    <b>MD：</b>把 <code>&lt;img width="…" height="…" … /&gt;</code> 中 width&gt;500 的缩为 500，height 按原比例取整；width≤500 不变。
   </div>
 
-  <div class="section-title">输入 html：</div>
-  <textarea id="inputArea" placeholder="在这里粘贴需要处理的 html..."></textarea>
+  <div class="section-title">输入：</div>
+  <textarea id="inputArea" placeholder="在这里粘贴需要处理的 cnblogs html 或 GitHub md..."></textarea>
 
   <div class="btn-row">
     <button id="processBtn">处理并复制</button>
@@ -83,21 +83,57 @@
       var output = document.getElementById('outputArea');
       var btn = document.getElementById('processBtn');
       var status = document.getElementById('statusText');
+      var MD_MAX_WIDTH = 500;
 
       // 给一个示例，方便直接测试
       input.value =
         '<p>&nbsp;</p>\\n';
 
-      function processHtml() {
+      function processCnblogs(text) {
+        // 只替换 alt="image" 后面直接跟 /></p> 的情况
+        return text.replace(/alt="image"\s*\/><\/p>/g, 'alt="image" height="642" width="1027" /></p>');
+      }
+
+      function processMd(text) {
+        // 匹配带 width / height 的 img 标签，按比例把 width 上限压到 500
+        return text.replace(
+          /<img\b([^>]*?)\bwidth="(\d+)"([^>]*?)\bheight="(\d+)"([^>]*?)\/?>/gi,
+          function (match, beforeW, widthStr, between, heightStr, afterH) {
+            var width = parseInt(widthStr, 10);
+            var height = parseInt(heightStr, 10);
+            if (!(width > MD_MAX_WIDTH) || !height) {
+              return match;
+            }
+            var newHeight = Math.round(height * MD_MAX_WIDTH / width);
+            return '<img' + beforeW + 'width="' + MD_MAX_WIDTH + '"' + between +
+              'height="' + newHeight + '"' + afterH + (/\/>$/.test(match) ? '/>' : '>');
+          }
+        ).replace(
+          // height 在 width 前面的写法也兼容
+          /<img\b([^>]*?)\bheight="(\d+)"([^>]*?)\bwidth="(\d+)"([^>]*?)\/?>/gi,
+          function (match, beforeH, heightStr, between, widthStr, afterW) {
+            var width = parseInt(widthStr, 10);
+            var height = parseInt(heightStr, 10);
+            if (!(width > MD_MAX_WIDTH) || !height) {
+              return match;
+            }
+            var newHeight = Math.round(height * MD_MAX_WIDTH / width);
+            return '<img' + beforeH + 'height="' + newHeight + '"' + between +
+              'width="' + MD_MAX_WIDTH + '"' + afterW + (/\/>$/.test(match) ? '/>' : '>');
+          }
+        );
+      }
+
+      function processText() {
         var text = input.value || '';
         if (!text.trim()) {
-          status.textContent = '请输入要处理的 html 文本。';
+          status.textContent = '请输入要处理的文本。';
           output.value = '';
           return;
         }
 
-        // 只替换 alt="image" 后面直接跟 /></p> 的情况
-        var replaced = text.replace(/alt="image"\s*\/><\/p>/g, 'alt="image" height="642" width="1027" /></p>');
+        // 先处理 MD（已有 width/height），再处理 cnblogs（补尺寸），避免互相干扰
+        var replaced = processCnblogs(processMd(text));
         output.value = replaced;
 
         // 尝试复制到剪贴板
@@ -115,7 +151,7 @@
         }
       }
 
-      btn.addEventListener('click', processHtml);
+      btn.addEventListener('click', processText);
     })();
   </script>
 </body>
